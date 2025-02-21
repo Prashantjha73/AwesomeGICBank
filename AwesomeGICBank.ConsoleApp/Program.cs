@@ -1,2 +1,23 @@
-﻿// See https://aka.ms/new-console-template for more information
-Console.WriteLine("Hello, World!");
+﻿using AwesomeGICBank.ConsoleApp;
+using AwesomeGICBank.ConsoleApp.Data.Interfaces;
+using AwesomeGICBank.ConsoleApp.Data.Repository;
+using AwesomeGICBank.ConsoleApp.Service.Interfaces;
+using AwesomeGICBank.ConsoleApp.Service.Service;
+using Microsoft.Extensions.DependencyInjection;
+
+internal class Program
+{
+    private static void Main(string[] args)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<ITransactionRepository, TransactionRepository>();
+        services.AddSingleton<IInterestRuleRepository, InterestRuleRepository>();
+        services.AddSingleton<IBankService, BankService>();
+        services.AddSingleton<BankAppUI>();
+
+        var serviceProvider = services.BuildServiceProvider();
+
+        var app = serviceProvider.GetRequiredService<BankAppUI>();
+        app.Run();
+    }
+}
