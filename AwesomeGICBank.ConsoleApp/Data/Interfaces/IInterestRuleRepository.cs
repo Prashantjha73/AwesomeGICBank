@@ -5,6 +5,6 @@ namespace AwesomeGICBank.ConsoleApp.Data.Interfaces
     {
         void AddOrUpdate(InterestRule rule);
         IEnumerable<InterestRule> GetAllRules();
-        InterestRule GetEffectiveRule(DateTime date);
+        InterestRule? GetEffectiveRule(DateTime date);
     }
 }

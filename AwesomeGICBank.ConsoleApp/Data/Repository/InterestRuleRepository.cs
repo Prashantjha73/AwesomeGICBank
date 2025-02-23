@@ -28,12 +28,12 @@ namespace AwesomeGICBank.ConsoleApp.Data.Repository
             return rules.OrderBy(r => r.Date);
         }
 
-        public InterestRule GetEffectiveRule(DateTime date)
+        public InterestRule? GetEffectiveRule(DateTime date)
         {
             return this.rules
                 .Where(r => r.Date.Date <= date.Date)
                 .OrderByDescending(r => r.Date)
-                .FirstOrDefault() ?? new InterestRule();
+                .FirstOrDefault();
         }
     }
 }

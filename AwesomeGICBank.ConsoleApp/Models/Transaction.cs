@@ -2,6 +2,7 @@
 namespace AwesomeGICBank.ConsoleApp.Models
 {
     using AwesomeGICBank.ConsoleApp.Models.Enums;
+
     public class Transaction
     {
         public DateTime Date { get; set; }
