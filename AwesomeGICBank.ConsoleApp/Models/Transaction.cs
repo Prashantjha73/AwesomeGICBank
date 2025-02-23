@@ -10,5 +10,6 @@ namespace AwesomeGICBank.ConsoleApp.Models
         public string AccountId { get; set; }
         public TransactionType Type { get; set; }
         public decimal Amount { get; set; }
+        public decimal Balance { get; set; }
     }
 }
