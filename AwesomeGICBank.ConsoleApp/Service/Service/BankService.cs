@@ -18,82 +18,114 @@ namespace AwesomeGICBank.ConsoleApp.Service.Service
 
         public bool AddTransaction(TransactionDto transactionDto, out string message)
         {
-            message = string.Empty;
-            if (!transactionDto.Validate(out message))
+            try
             {
+                message = string.Empty;
+                if (!transactionDto.Validate(out message))
+                {
+                    return false;
+                }
+
+                var transaction = new Transaction
+                {
+                    Date = transactionDto.Date,
+                    AccountId = transactionDto.AccountId,
+                    Type = transactionDto.Type.ToUpper() == "D" ? TransactionType.Deposit : TransactionType.Withdrawal,
+                    Amount = transactionDto.Amount
+                };
+
+                transaction.TransactionId = GenerateTransactionId(transaction.AccountId, transaction.Date);
+
+                if (!ValidateBusinessRules(transaction, out message))
+                {
+                    return false;
+                }
+
+                txnRepo.Add(transaction);
+                message = $"Transaction added. {transaction.AccountId} statement updated.";
+                return true;
+            }
+            catch (Exception ex)
+            {
+                message = $"Failed to add transaction for AccountId: {transactionDto.AccountId}. Exception: {ex.Message}";
                 return false;
             }
-
-            var transaction = new Transaction
-            {
-                Date = transactionDto.Date,
-                AccountId = transactionDto.AccountId,
-                Type = transactionDto.Type.ToUpper() == "D" ? TransactionType.Deposit : TransactionType.Withdrawal,
-                Amount = transactionDto.Amount
-            };
-
-            transaction.TransactionId = GenerateTransactionId(transaction.AccountId, transaction.Date);
-
-            if (!ValidateBusinessRules(transaction, out message))
-            {
-                return false;
-            }
-
-            txnRepo.Add(transaction);
-            message = $"Transaction added. {transaction.AccountId} statement updated.";
-            return true;
         }
 
         public bool AddInterestRule(InterestRuleDto interestRuleDto, out string message)
         {
-            message = string.Empty;
-            if (!interestRuleDto.Validate(out message))
+            try
             {
-                Console.WriteLine(message);
+                message = string.Empty;
+                if (!interestRuleDto.Validate(out message))
+                {
+                    Console.WriteLine(message);
+                    return false;
+                }
+
+                var rule = new InterestRule
+                {
+                    Date = interestRuleDto.Date,
+                    RuleId = interestRuleDto.RuleId!,
+                    RatePercent = interestRuleDto.RatePercent
+                };
+
+                ruleRepo.AddOrUpdate(rule);
+                message = "Interest rule added/updated successfully.";
+                return true;
+            }
+            catch (Exception ex)
+            {
+                message = $"Failed to add rule. Exception: {ex.Message}";
                 return false;
             }
-
-            var rule = new InterestRule
-            {
-                Date = interestRuleDto.Date,
-                RuleId = interestRuleDto.RuleId!,
-                RatePercent = interestRuleDto.RatePercent
-            };
-
-            ruleRepo.AddOrUpdate(rule);
-            message = "Interest rule added/updated successfully.";
-            return true;
         }
 
         public List<Transaction>? GetStatement(StatementRequestDto request)
         {
-            var message = string.Empty;
-            if (!request.Validate(out message))
+            try
             {
-                Console.WriteLine(message);
+                var message = string.Empty;
+                if (!request.Validate(out message))
+                {
+                    Console.WriteLine(message);
+                    return null;
+                }
+                var accountId = request.AccountId!;
+                var periodStart = new DateTime(request.Year, request.Month, 1);
+                var periodEnd = periodStart.AddMonths(1).AddDays(-1);
+
+                var allTxns = txnRepo.GetTransactions(accountId).ToList();
+                if (!allTxns.Any())
+                    return new List<Transaction>();
+
+                decimal startingBalance = ComputeStartingBalance(allTxns, periodStart);
+                var monthlyTxns = allTxns
+                    .Where(t => t.Date >= periodStart && t.Date <= periodEnd)
+                    .OrderBy(t => t.Date)
+                    .ThenBy(t => t.TransactionId)
+                    .ToList();
+
+                return CalculateStatementDetails(periodStart, periodEnd, monthlyTxns, startingBalance);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
                 return null;
             }
-            var accountId = request.AccountId!;
-            var periodStart = new DateTime(request.Year, request.Month, 1);
-            var periodEnd = periodStart.AddMonths(1).AddDays(-1);
-
-            var allTxns = txnRepo.GetTransactions(accountId).ToList();
-            if (!allTxns.Any())
-                return new List<Transaction>();
-
-            decimal startingBalance = ComputeStartingBalance(allTxns, periodStart);
-            var monthlyTxns = allTxns
-                .Where(t => t.Date >= periodStart && t.Date <= periodEnd)
-                .OrderBy(t => t.Date)
-                .ThenBy(t => t.TransactionId)
-                .ToList();
-
-            return CalculateStatementDetails(periodStart, periodEnd, monthlyTxns, startingBalance);
         }
 
-        public List<InterestRule> GetInterestRules()
+        public List<InterestRule>? GetInterestRules()
         {
-            return ruleRepo.GetAllRules().ToList();
+            try
+            {
+                return ruleRepo.GetAllRules().ToList();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                return null;
+            }
         }
 
         private string GenerateTransactionId(string accountId, DateTime txnDate)

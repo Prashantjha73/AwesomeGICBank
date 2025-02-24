@@ -177,6 +177,10 @@ namespace AwesomeGICBank.ConsoleApp
         private void ShowInterestRules()
         {
             var rules = bankService.GetInterestRules();
+            if (rules == null)
+            {
+                return;
+            }
             if (rules.Count == 0)
             {
                 Console.WriteLine("No interest rules defined.");
