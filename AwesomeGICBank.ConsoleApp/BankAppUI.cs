@@ -71,15 +71,10 @@ namespace AwesomeGICBank.ConsoleApp
 
                 string accountId = parts[1];
                 string type = parts[2];
-                if (string.IsNullOrWhiteSpace(type) || (type.ToUpper() != "D" && type.ToUpper() != "W"))
-                {
-                    Console.WriteLine("Transaction type must be D (deposit) or W (withdrawal).");
-                    continue;
-                }
 
-                if (!decimal.TryParse(parts[3], out decimal amount) || amount <= 0)
+                if (!decimal.TryParse(parts[3], out decimal amount))
                 {
-                    Console.WriteLine("Amount must be a positive number.");
+                    Console.WriteLine("Invalid amount");
                     continue;
                 }
 
@@ -96,12 +91,6 @@ namespace AwesomeGICBank.ConsoleApp
                     Type = type,
                     Amount = amount
                 };
-
-                if (!transactionDto.Validate(out string dtoError))
-                {
-                    Console.WriteLine(dtoError);
-                    continue;
-                }
 
                 if (bankService.AddTransaction(transactionDto, out string message))
                 {
@@ -142,10 +131,9 @@ namespace AwesomeGICBank.ConsoleApp
                     Console.WriteLine("RuleId cannot be empty.");
                     continue;
                 }
-
-                if (!decimal.TryParse(parts[2], out decimal rate) || rate <= 0 || rate >= 100)
+                if (!decimal.TryParse(parts[2], out decimal rate))
                 {
-                    Console.WriteLine("Interest rate must be greater than 0 and less than 100.");
+                    Console.WriteLine("Invalid rate.");
                     continue;
                 }
 
@@ -155,12 +143,6 @@ namespace AwesomeGICBank.ConsoleApp
                     RuleId = ruleId,
                     RatePercent = rate
                 };
-
-                if (!interestRuleDto.Validate(out string dtoError))
-                {
-                    Console.WriteLine(dtoError);
-                    continue;
-                }
 
                 if (bankService.AddInterestRule(interestRuleDto, out string message))
                 {
@@ -176,9 +158,10 @@ namespace AwesomeGICBank.ConsoleApp
 
         private void ShowInterestRules()
         {
-            var rules = bankService.GetInterestRules();
+            var rules = bankService.GetInterestRules(out string message);
             if (rules == null)
             {
+                Console.WriteLine(message);
                 return;
             }
             if (rules.Count == 0)
@@ -196,13 +179,16 @@ namespace AwesomeGICBank.ConsoleApp
 
         private void PrintStatement()
         {
-            Console.WriteLine("Please enter account and month to generate the statement in the format <Account> <YYYYMM> (or enter blank to go back to main menu):");
-            Console.Write(">");
-            string? input = Console.ReadLine();
-            if (string.IsNullOrWhiteSpace(input))
-                return;
+            while (true)
+            {
+                Console.WriteLine("Please enter account and month to generate the statement in the format <Account> <YYYYMM> (or enter blank to go back to main menu):");
+                Console.Write(">");
+                string? input = Console.ReadLine();
+                if (string.IsNullOrWhiteSpace(input))
+                    break;
 
-            PrintStatementInFormat(input);
+                PrintStatementInFormat(input);
+            }
         }
 
         private StatementRequestDto? SanitiseAccountStatementInputRequest(string input)
@@ -240,9 +226,10 @@ namespace AwesomeGICBank.ConsoleApp
             {
                 return;
             }
-            var statement = bankService.GetStatement(request);
+            var statement = bankService.GetStatement(request, out string message);
             if (statement == null)
             {
+                Console.WriteLine(message);
                 return;
             }
             if (statement.Count == 0)

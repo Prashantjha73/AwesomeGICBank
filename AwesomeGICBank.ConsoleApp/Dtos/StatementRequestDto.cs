@@ -1,34 +1,16 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace AwesomeGICBank.ConsoleApp.Dtos
 {
     public class StatementRequestDto
     {
-        public string? AccountId { get; set; }
+        [Required(ErrorMessage = "AccountId cannot be empty.")]
+        public string AccountId { get; set; }
+
+        [Range(1900, 3000, ErrorMessage = "Invalid Year. Year must be greater than 1900.")]
         public int Year { get; set; }
+
+        [Range(1, 12, ErrorMessage = "Invalid Month.")]
         public int Month { get; set; }
-
-        public bool Validate(out string errorMessage)
-        {
-            errorMessage = string.Empty;
-
-            if (string.IsNullOrWhiteSpace(AccountId))
-            {
-                errorMessage = "AccountId cannot be empty.";
-                return false;
-            }
-
-            if (!(Year >= 1900 && Year <= DateTime.Now.Year))
-            {
-                errorMessage = "Invalid Year";
-                return false;
-            }
-
-            if (!(Month >= 1 && Month <= 12))
-            {
-                errorMessage = "Invalid Month";
-                return false;
-            }
-
-            return true;
-        }
     }
 }

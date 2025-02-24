@@ -1,47 +1,24 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using AwesomeGICBank.ConsoleApp.Models.Enums;
+using System.ComponentModel.DataAnnotations;
+using AwesomeGICBank.ConsoleApp.Helper.CustomValidations;
 
 namespace AwesomeGICBank.ConsoleApp.Dtos
 {
     public class TransactionDto
     {
-        public required DateTime Date { get; set; }
-        public required string AccountId { get; set; }
-        public required string Type { get; set; }
-        public required decimal Amount { get; set; }
+        [Required(ErrorMessage = "Date is required.")]
+        [CustomYearRange(1900, ErrorMessage = "Invalid Year. Year must be greater than 1900.")]
+        public DateTime Date { get; set; }
 
-        public bool Validate(out string errorMessage)
-        {
-            errorMessage = string.Empty;
+        [Required(ErrorMessage = "AccountId cannot be empty.")]
+        public string AccountId { get; set; }
 
-            if (string.IsNullOrWhiteSpace(AccountId))
-            {
-                errorMessage = "AccountId cannot be empty.";
-                return false;
-            }
+        [Required(ErrorMessage = "Transaction type is required.")]
+        [RegularExpression("^(D|W)$", ErrorMessage = "Transaction type must be D (deposit) or W (withdrawal).")]
+        public string Type { get; set; }
 
-            if (string.IsNullOrWhiteSpace(Type) || (Type.ToUpper() != "D" && Type.ToUpper() != "W"))
-            {
-                errorMessage = "Transaction type must be D (deposit) or W (withdrawal).";
-                return false;
-            }
-
-            if (Amount <= 0)
-            {
-                errorMessage = "Amount must be greater than zero.";
-                return false;
-            }
-
-            if (decimal.Round(Amount, 2) != Amount)
-            {
-                errorMessage = "Amount cannot have more than two decimal places.";
-                return false;
-            }
-
-            return true;
-        }
+        [Required(ErrorMessage = "Amount is required.")]
+        [Range(0.01, double.MaxValue, ErrorMessage = "Amount must be greater than zero.")]
+        [CustomDecimalPrecision(2, ErrorMessage = "Amount cannot have more than two decimal places.")]
+        public decimal Amount { get; set; }
     }
 }

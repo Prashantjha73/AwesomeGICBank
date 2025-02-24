@@ -34,7 +34,7 @@ namespace AwesomeGICBank.ConsoleApp.Tests
 
             bool result = bankService.AddTransaction(dto, out string message);
             Assert.False(result);
-            Assert.Equal("Transaction type must be D (deposit) or W (withdrawal).", message);
+            Assert.Contains("Transaction type must be D (deposit) or W (withdrawal).", message);
         }
 
         [Fact]
@@ -153,7 +153,7 @@ namespace AwesomeGICBank.ConsoleApp.Tests
 
             bool result = bankService.AddInterestRule(dto, out string message);
             Assert.False(result);
-            Assert.Equal("Interest rate must be greater than 0 and less than 100.", message);
+            Assert.Contains("Interest rate must be greater than 0 and less than 100.", message);
         }
 
         [Fact]
@@ -176,7 +176,7 @@ namespace AwesomeGICBank.ConsoleApp.Tests
         public void GetStatement_EmptyRequest_ReturnsNull()
         {
             var request = new StatementRequestDto { AccountId = "", Year = 2024, Month = 11 };
-            var result = bankService.GetStatement(request);
+            var result = bankService.GetStatement(request, out string message);
             Assert.Null(result);
         }
 
@@ -185,7 +185,7 @@ namespace AwesomeGICBank.ConsoleApp.Tests
         {
             mockTxnRepo.Setup(x => x.GetTransactions("A1")).Returns(new List<Transaction>());
             var request = new StatementRequestDto { AccountId = "A1", Year = 2024, Month = 11 };
-            var result = bankService.GetStatement(request);
+            var result = bankService.GetStatement(request, out string message);
             Assert.Empty(result);
         }
 
@@ -215,7 +215,7 @@ namespace AwesomeGICBank.ConsoleApp.Tests
                         .Returns((DateTime dt) => new InterestRule { Date = dt, RuleId = "RULE01", RatePercent = 1.0m });
 
             var request = new StatementRequestDto { AccountId = "A1", Year = 2024, Month = 11 };
-            var result = bankService.GetStatement(request);
+            var result = bankService.GetStatement(request, out string message);
             Assert.NotEmpty(result);
             Assert.Equal(TransactionType.Interest, result.Last().Type);
         }
@@ -230,7 +230,7 @@ namespace AwesomeGICBank.ConsoleApp.Tests
             };
 
             mockRuleRepo.Setup(x => x.GetAllRules()).Returns(rules);
-            var result = bankService.GetInterestRules();
+            var result = bankService.GetInterestRules(out string message);
             Assert.Equal(2, result?.Count);
             Assert.Contains(result, r => r.RuleId == "RULE01");
             Assert.Contains(result, r => r.RuleId == "RULE02");
@@ -247,7 +247,6 @@ namespace AwesomeGICBank.ConsoleApp.Tests
                 Amount = 100m
             };
 
-            // Simulate exception when fetching transactions.
             mockTxnRepo.Setup(x => x.GetTransactions(It.IsAny<string>())).Throws(new Exception("Repository error"));
 
             bool result = bankService.AddTransaction(dto, out string message);
@@ -276,8 +275,9 @@ namespace AwesomeGICBank.ConsoleApp.Tests
         public void GetInterestRules_RepositoryThrowsException_ReturnsEmptyList()
         {
             mockRuleRepo.Setup(x => x.GetAllRules()).Throws(new Exception("Repository error"));
-            var result = bankService.GetInterestRules();
+            var result = bankService.GetInterestRules(out string message);
             Assert.Null(result);
+            Assert.Contains("Exception", message);
         }
 
         [Fact]
@@ -339,7 +339,7 @@ namespace AwesomeGICBank.ConsoleApp.Tests
                         });
 
             var request = new StatementRequestDto { AccountId = "A1", Year = 2024, Month = 11 };
-            var statement = bankService.GetStatement(request);
+            var statement = bankService.GetStatement(request, out string message);
             var interestTxn = statement.Last();
             Assert.Equal(TransactionType.Interest, interestTxn.Type);
             Assert.Equal(1.61m, interestTxn.Amount);

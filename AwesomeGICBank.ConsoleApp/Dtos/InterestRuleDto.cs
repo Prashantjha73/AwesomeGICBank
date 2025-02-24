@@ -1,35 +1,18 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
+using AwesomeGICBank.ConsoleApp.Helper.CustomValidations;
 
 namespace AwesomeGICBank.ConsoleApp.Dtos
 {
     public class InterestRuleDto
     {
+        [Required(ErrorMessage = "Date is required.")]
+        [CustomYearRange(1900, ErrorMessage = "Invalid Year. Year must be greater than 1900.")]
         public DateTime Date { get; set; }
-        public string? RuleId { get; set; }
+
+        [Required(ErrorMessage = "RuleId cannot be empty.")]
+        public string RuleId { get; set; }
+
+        [Range(0.01, 99.99, ErrorMessage = "Interest rate must be greater than 0 and less than 100.")]
         public decimal RatePercent { get; set; }
-
-        public bool Validate(out string errorMessage)
-        {
-            errorMessage = string.Empty;
-
-            // RuleId must not be empty.
-            if (string.IsNullOrWhiteSpace(RuleId))
-            {
-                errorMessage = "RuleId cannot be empty.";
-                return false;
-            }
-
-            // RatePercent must be greater than 0 and less than 100.
-            if (RatePercent <= 0 || RatePercent >= 100)
-            {
-                errorMessage = "Interest rate must be greater than 0 and less than 100.";
-                return false;
-            }
-
-            return true;
-        }
     }
 }

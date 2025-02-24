@@ -2,6 +2,7 @@ namespace AwesomeGICBank.ConsoleApp.Service.Service
 {
     using AwesomeGICBank.ConsoleApp.Data.Interfaces;
     using AwesomeGICBank.ConsoleApp.Dtos;
+    using AwesomeGICBank.ConsoleApp.Helper;
     using AwesomeGICBank.ConsoleApp.Models;
     using AwesomeGICBank.ConsoleApp.Models.Enums;
     using AwesomeGICBank.ConsoleApp.Service.Interfaces;
@@ -21,10 +22,8 @@ namespace AwesomeGICBank.ConsoleApp.Service.Service
             try
             {
                 message = string.Empty;
-                if (!transactionDto.Validate(out message))
-                {
+                if (!DtoValidationHelper.Validate(transactionDto, out message))
                     return false;
-                }
 
                 var transaction = new Transaction
                 {
@@ -57,11 +56,9 @@ namespace AwesomeGICBank.ConsoleApp.Service.Service
             try
             {
                 message = string.Empty;
-                if (!interestRuleDto.Validate(out message))
-                {
-                    Console.WriteLine(message);
+
+                if (!DtoValidationHelper.Validate(interestRuleDto, out message))
                     return false;
-                }
 
                 var rule = new InterestRule
                 {
@@ -81,16 +78,14 @@ namespace AwesomeGICBank.ConsoleApp.Service.Service
             }
         }
 
-        public List<Transaction>? GetStatement(StatementRequestDto request)
+        public List<Transaction>? GetStatement(StatementRequestDto request, out string message)
         {
             try
             {
-                var message = string.Empty;
-                if (!request.Validate(out message))
-                {
-                    Console.WriteLine(message);
+                message = string.Empty;
+                if (!DtoValidationHelper.Validate(request, out message))
                     return null;
-                }
+
                 var accountId = request.AccountId!;
                 var periodStart = new DateTime(request.Year, request.Month, 1);
                 var periodEnd = periodStart.AddMonths(1).AddDays(-1);
@@ -110,20 +105,21 @@ namespace AwesomeGICBank.ConsoleApp.Service.Service
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                message = $"Failed to retrieve statement. Exception: {ex.Message}";
                 return null;
             }
         }
 
-        public List<InterestRule>? GetInterestRules()
+        public List<InterestRule>? GetInterestRules(out string message)
         {
             try
             {
+                message = string.Empty;
                 return ruleRepo.GetAllRules().ToList();
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                message = $"Failed to retrieve rules. Exception: {ex.Message}";
                 return null;
             }
         }
