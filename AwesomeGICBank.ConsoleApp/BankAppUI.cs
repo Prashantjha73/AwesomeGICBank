@@ -1,11 +1,10 @@
-using System;
-using System.Globalization;
-using AwesomeGICBank.ConsoleApp.Dtos;
-using AwesomeGICBank.ConsoleApp.Service.Interfaces;
-using AwesomeGICBank.ConsoleApp.Models;
 
 namespace AwesomeGICBank.ConsoleApp
 {
+    using System.Globalization;
+    using AwesomeGICBank.ConsoleApp.Dtos;
+    using AwesomeGICBank.ConsoleApp.Service.Interfaces;
+
     public class BankAppUI
     {
         private readonly IBankService bankService;

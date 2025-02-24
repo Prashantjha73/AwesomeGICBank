@@ -1,15 +1,10 @@
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using AwesomeGICBank.ConsoleApp.Data.Interfaces;
-using AwesomeGICBank.ConsoleApp.Dtos;
-using AwesomeGICBank.ConsoleApp.Models;
-using AwesomeGICBank.ConsoleApp.Models.Enums;
-using AwesomeGICBank.ConsoleApp.Service.Interfaces;
-
 namespace AwesomeGICBank.ConsoleApp.Service.Service
 {
+    using AwesomeGICBank.ConsoleApp.Data.Interfaces;
+    using AwesomeGICBank.ConsoleApp.Dtos;
+    using AwesomeGICBank.ConsoleApp.Models;
+    using AwesomeGICBank.ConsoleApp.Models.Enums;
+    using AwesomeGICBank.ConsoleApp.Service.Interfaces;
     public class BankService : IBankService
     {
         private readonly ITransactionRepository txnRepo;
@@ -69,7 +64,6 @@ namespace AwesomeGICBank.ConsoleApp.Service.Service
             return true;
         }
 
-        // Now returns a list of Transaction objects representing the statement.
         public List<Transaction> GetStatement(string accountInput)
         {
             var statement = new List<Transaction>();
@@ -167,7 +161,6 @@ namespace AwesomeGICBank.ConsoleApp.Service.Service
             return statement;
         }
 
-        // New method to get all interest rules.
         public List<InterestRule> GetInterestRules()
         {
             return ruleRepo.GetAllRules().ToList();
