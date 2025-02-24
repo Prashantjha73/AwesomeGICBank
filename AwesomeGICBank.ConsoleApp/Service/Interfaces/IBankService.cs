@@ -8,7 +8,7 @@ namespace AwesomeGICBank.ConsoleApp.Service.Interfaces
     {
         bool AddTransaction(TransactionDto transactionDto, out string message);
         bool AddInterestRule(InterestRuleDto interestRuleDto, out string message);
-        List<Transaction> GetStatement(string accountInput);
+        List<Transaction>? GetStatement(StatementRequestDto request);
         List<InterestRule> GetInterestRules();
     }
 }

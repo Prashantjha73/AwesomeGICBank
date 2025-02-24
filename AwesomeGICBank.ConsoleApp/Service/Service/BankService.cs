@@ -49,13 +49,14 @@ namespace AwesomeGICBank.ConsoleApp.Service.Service
             message = string.Empty;
             if (!interestRuleDto.Validate(out message))
             {
+                Console.WriteLine(message);
                 return false;
             }
 
             var rule = new InterestRule
             {
                 Date = interestRuleDto.Date,
-                RuleId = interestRuleDto.RuleId,
+                RuleId = interestRuleDto.RuleId!,
                 RatePercent = interestRuleDto.RatePercent
             };
 
@@ -64,101 +65,30 @@ namespace AwesomeGICBank.ConsoleApp.Service.Service
             return true;
         }
 
-        public List<Transaction> GetStatement(string accountInput)
+        public List<Transaction>? GetStatement(StatementRequestDto request)
         {
-            var statement = new List<Transaction>();
-
-            if (string.IsNullOrWhiteSpace(accountInput))
-                return statement;
-
-            var parts = accountInput.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length != 2)
-                return statement;
-
-            string accountId = parts[0];
-            string yearMonthStr = parts[1];
-            if (yearMonthStr.Length != 6 ||
-                !int.TryParse(yearMonthStr.Substring(0, 4), out int year) ||
-                !int.TryParse(yearMonthStr.Substring(4, 2), out int month))
+            var message = string.Empty;
+            if (!request.Validate(out message))
             {
-                return statement;
+                Console.WriteLine(message);
+                return null;
             }
+            var accountId = request.AccountId!;
+            var periodStart = new DateTime(request.Year, request.Month, 1);
+            var periodEnd = periodStart.AddMonths(1).AddDays(-1);
 
             var allTxns = txnRepo.GetTransactions(accountId).ToList();
             if (!allTxns.Any())
-                return statement;
+                return new List<Transaction>();
 
-            DateTime periodStart = new DateTime(year, month, 1);
-            DateTime periodEnd = periodStart.AddMonths(1).AddDays(-1);
-
-            decimal startingBalance = allTxns
-                .Where(t => t.Date < periodStart)
-                .Aggregate(0m, (sum, t) => sum + (t.Type == TransactionType.Deposit ? t.Amount : -t.Amount));
-
+            decimal startingBalance = ComputeStartingBalance(allTxns, periodStart);
             var monthlyTxns = allTxns
                 .Where(t => t.Date >= periodStart && t.Date <= periodEnd)
                 .OrderBy(t => t.Date)
                 .ThenBy(t => t.TransactionId)
                 .ToList();
 
-            // Calculate statement details and compute running balance.
-            decimal runningBalance = startingBalance;
-            decimal totalInterest = 0m;
-            var txnsByDate = monthlyTxns.GroupBy(t => t.Date.Date)
-                                        .ToDictionary(g => g.Key, g => g.ToList());
-            DateTime current = periodStart;
-            while (current <= periodEnd)
-            {
-                if (txnsByDate.TryGetValue(current.Date, out List<Transaction> dayTxns))
-                {
-                    foreach (var txn in dayTxns)
-                    {
-                        if (txn.Type == TransactionType.Deposit)
-                            runningBalance += txn.Amount;
-                        else if (txn.Type == TransactionType.Withdrawal)
-                            runningBalance -= txn.Amount;
-
-                        // Create a copy with computed balance.
-                        var stmtTxn = new Transaction
-                        {
-                            Date = txn.Date,
-                            TransactionId = txn.TransactionId,
-                            AccountId = txn.AccountId,
-                            Type = txn.Type,
-                            Amount = txn.Amount,
-                            Balance = runningBalance
-                        };
-                        statement.Add(stmtTxn);
-                    }
-                }
-
-                // Compute interest for the day.
-                var rule = ruleRepo.GetEffectiveRule(current);
-                if (rule != null)
-                {
-                    totalInterest += (runningBalance * (rule.RatePercent / 100m));
-                }
-
-                current = current.AddDays(1);
-            }
-
-            decimal interest = Math.Round(totalInterest / 365m, 2);
-            if (interest > 0)
-            {
-                runningBalance += interest;
-                var interestTxn = new Transaction
-                {
-                    Date = periodEnd,
-                    TransactionId = string.Empty,
-                    AccountId = accountId,
-                    Type = TransactionType.Interest,
-                    Amount = interest,
-                    Balance = runningBalance
-                };
-                statement.Add(interestTxn);
-            }
-
-            return statement;
+            return CalculateStatementDetails(periodStart, periodEnd, monthlyTxns, startingBalance);
         }
 
         public List<InterestRule> GetInterestRules()
@@ -199,6 +129,75 @@ namespace AwesomeGICBank.ConsoleApp.Service.Service
             }
 
             return true;
+        }
+
+        private decimal ComputeStartingBalance(List<Transaction> allTxns, DateTime periodStart)
+        {
+            return allTxns
+                .Where(t => t.Date < periodStart)
+                .Aggregate(0m, (sum, t) => sum + (t.Type == TransactionType.Deposit ? t.Amount : -t.Amount));
+        }
+
+        private List<Transaction> CalculateStatementDetails(DateTime periodStart, DateTime periodEnd, List<Transaction> monthlyTxns, decimal startingBalance)
+        {
+            var statement = new List<Transaction>();
+            decimal runningBalance = startingBalance;
+            decimal totalInterest = 0m;
+            var txnsByDate = monthlyTxns.GroupBy(t => t.Date.Date)
+                                        .ToDictionary(g => g.Key, g => g.ToList());
+            DateTime current = periodStart;
+
+            while (current <= periodEnd)
+            {
+                if (txnsByDate.TryGetValue(current.Date, out List<Transaction>? dayTxns))
+                {
+                    foreach (var txn in dayTxns)
+                    {
+                        if (txn.Type == TransactionType.Deposit)
+                            runningBalance += txn.Amount;
+                        else if (txn.Type == TransactionType.Withdrawal)
+                            runningBalance -= txn.Amount;
+
+                        var stmtTxn = new Transaction
+                        {
+                            Date = txn.Date,
+                            TransactionId = txn.TransactionId,
+                            AccountId = txn.AccountId,
+                            Type = txn.Type,
+                            Amount = txn.Amount,
+                            Balance = runningBalance
+                        };
+                        statement.Add(stmtTxn);
+                    }
+                }
+
+                // Compute daily interest.
+                var rule = ruleRepo.GetEffectiveRule(current);
+                if (rule != null)
+                {
+                    totalInterest += runningBalance * (rule.RatePercent / 100m);
+                }
+
+                current = current.AddDays(1);
+            }
+
+            decimal interest = Math.Round(totalInterest / 365m, 2);
+            if (interest > 0)
+            {
+                runningBalance += interest;
+                var interestTxn = new Transaction
+                {
+                    Date = periodEnd,
+                    TransactionId = string.Empty,
+                    AccountId = monthlyTxns.FirstOrDefault()?.AccountId ?? string.Empty,
+                    Type = TransactionType.Interest,
+                    Amount = interest,
+                    Balance = runningBalance
+                };
+                statement.Add(interestTxn);
+            }
+
+            return statement;
         }
     }
 }

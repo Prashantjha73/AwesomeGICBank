@@ -1,6 +1,6 @@
-
 namespace AwesomeGICBank.ConsoleApp
 {
+    using System;
     using System.Globalization;
     using AwesomeGICBank.ConsoleApp.Dtos;
     using AwesomeGICBank.ConsoleApp.Service.Interfaces;
@@ -66,11 +66,8 @@ namespace AwesomeGICBank.ConsoleApp
                     continue;
                 }
 
-                if (!DateTime.TryParseExact(parts[0], "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime date))
-                {
-                    Console.WriteLine("Invalid date format. Use YYYYMMdd.");
+                if (!ValidateDate(parts[0], out DateTime date))
                     continue;
-                }
 
                 string accountId = parts[1];
                 string type = parts[2];
@@ -110,19 +107,7 @@ namespace AwesomeGICBank.ConsoleApp
                 {
                     Console.WriteLine(message);
                     string yearMonth = parts[0].Substring(0, 6);
-                    var statement = bankService.GetStatement($"{accountId} {yearMonth}");
-                    if (statement.Count == 0)
-                        Console.WriteLine("No transactions found for this period.");
-                    else
-                    {
-                        Console.WriteLine("Account Statement:");
-                        Console.WriteLine("| Date     | Txn Id      | Type |  Amount |  Balance |");
-                        foreach (var txn in statement)
-                        {
-                            // For interest transactions, TransactionId may be empty.
-                            Console.WriteLine($"| {txn.Date:yyyyMMdd} | {txn.TransactionId,-12} | {txn.Type.ToString()[0]}    | {txn.Amount,7:N2} | {txn.Balance,8:N2} |");
-                        }
-                    }
+                    PrintStatementInFormat($"{accountId} {yearMonth}");
                 }
                 else
                 {
@@ -148,11 +133,8 @@ namespace AwesomeGICBank.ConsoleApp
                     continue;
                 }
 
-                if (!DateTime.TryParseExact(parts[0], "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime date))
-                {
-                    Console.WriteLine("Invalid date format. Use YYYYMMdd.");
+                if (!ValidateDate(parts[0], out DateTime date))
                     continue;
-                }
 
                 string ruleId = parts[1];
                 if (string.IsNullOrWhiteSpace(ruleId))
@@ -186,7 +168,9 @@ namespace AwesomeGICBank.ConsoleApp
                     ShowInterestRules();
                 }
                 else
+                {
                     Console.WriteLine(message);
+                }
             }
         }
 
@@ -214,18 +198,71 @@ namespace AwesomeGICBank.ConsoleApp
             if (string.IsNullOrWhiteSpace(input))
                 return;
 
-            var statement = bankService.GetStatement(input);
-            if (statement.Count == 0)
+            PrintStatementInFormat(input);
+        }
+
+        private StatementRequestDto? SanitiseAccountStatementInputRequest(string input)
+        {
+            var parts = input.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length != 2)
             {
-                Console.WriteLine("Invalid input or no transactions found.");
+                Console.WriteLine("Invalid input format.");
+                return null;
+            }
+
+            string accountId = parts[0];
+            string yearMonthStr = parts[1];
+            if (yearMonthStr.Length != 6 ||
+                !int.TryParse(yearMonthStr.Substring(0, 4), out int year) ||
+                !int.TryParse(yearMonthStr.Substring(4, 2), out int month))
+            {
+                Console.WriteLine("Invalid YearMonth format. Use YYYYMM.");
+                return null;
+            }
+
+            return new StatementRequestDto
+            {
+                AccountId = accountId,
+                Year = year,
+                Month = month
+            }; ;
+        }
+
+        private void PrintStatementInFormat(string input)
+        {
+            var request = SanitiseAccountStatementInputRequest(input);
+
+            if (request == null)
+            {
                 return;
             }
+            var statement = bankService.GetStatement(request);
+            if (statement == null)
+            {
+                return;
+            }
+            if (statement.Count == 0)
+            {
+                Console.WriteLine("No transactions found for this period.");
+                return;
+            }
+
             Console.WriteLine("Account Statement:");
             Console.WriteLine("| Date     | Txn Id      | Type |  Amount |  Balance |");
             foreach (var txn in statement)
             {
                 Console.WriteLine($"| {txn.Date:yyyyMMdd} | {txn.TransactionId,-12} | {txn.Type.ToString()[0]}    | {txn.Amount,7:N2} | {txn.Balance,8:N2} |");
             }
+        }
+
+        private bool ValidateDate(string dateString, out DateTime date)
+        {
+            if (!DateTime.TryParseExact(dateString, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out date))
+            {
+                Console.WriteLine("Invalid date format. Use YYYYMMdd.");
+                return false;
+            }
+            return true;
         }
     }
 }

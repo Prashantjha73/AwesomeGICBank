@@ -8,7 +8,7 @@ namespace AwesomeGICBank.ConsoleApp.Dtos
     public class InterestRuleDto
     {
         public DateTime Date { get; set; }
-        public string RuleId { get; set; }
+        public string? RuleId { get; set; }
         public decimal RatePercent { get; set; }
 
         public bool Validate(out string errorMessage)

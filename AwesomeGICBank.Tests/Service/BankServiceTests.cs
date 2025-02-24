@@ -60,7 +60,6 @@ namespace AwesomeGICBank.ConsoleApp.Tests
         [Fact]
         public void AddTransaction_RunningBalanceNegative_ReturnsFalse()
         {
-            // Existing deposit of 50 on 2024-11-01.
             var existingTxn = new Transaction
             {
                 Date = new DateTime(2024, 11, 01),
@@ -108,7 +107,6 @@ namespace AwesomeGICBank.ConsoleApp.Tests
             };
 
             mockTxnRepo.Setup(x => x.GetTransactions("A1")).Returns(new List<Transaction> { existingTxn });
-            // For generating TransactionId, assume no other transaction on the same day.
             mockTxnRepo.Setup(x => x.GetTransactionsByDate("A1", dto.Date)).Returns(new List<Transaction>());
 
             bool result = bankService.AddTransaction(dto, out string message);
@@ -149,33 +147,20 @@ namespace AwesomeGICBank.ConsoleApp.Tests
             mockRuleRepo.Verify(x => x.AddOrUpdate(It.IsAny<InterestRule>()), Times.Once);
         }
 
-
         [Fact]
-        public void GetStatement_EmptyInput_ReturnsEmptyList()
+        public void GetStatement_EmptyRequest_ReturnsNull()
         {
-            var result = bankService.GetStatement(string.Empty);
-            Assert.Empty(result);
-        }
-
-        [Fact]
-        public void GetStatement_InvalidFormat_ReturnsEmptyList()
-        {
-            var result = bankService.GetStatement("A1");
-            Assert.Empty(result);
-        }
-
-        [Fact]
-        public void GetStatement_InvalidYearMonth_ReturnsEmptyList()
-        {
-            var result = bankService.GetStatement("A1 20241");
-            Assert.Empty(result);
+            var request = new StatementRequestDto { AccountId = "", Year = 2024, Month = 11 };
+            var result = bankService.GetStatement(request);
+            Assert.Null(result);
         }
 
         [Fact]
         public void GetStatement_NoTransactions_ReturnsEmptyList()
         {
             mockTxnRepo.Setup(x => x.GetTransactions("A1")).Returns(new List<Transaction>());
-            var result = bankService.GetStatement("A1 202411");
+            var request = new StatementRequestDto { AccountId = "A1", Year = 2024, Month = 11 };
+            var result = bankService.GetStatement(request);
             Assert.Empty(result);
         }
 
@@ -190,6 +175,7 @@ namespace AwesomeGICBank.ConsoleApp.Tests
                 Type = TransactionType.Deposit,
                 Amount = 200m
             };
+
             var txnWithin = new Transaction
             {
                 Date = new DateTime(2024, 11, 05),
@@ -203,7 +189,8 @@ namespace AwesomeGICBank.ConsoleApp.Tests
             mockRuleRepo.Setup(x => x.GetEffectiveRule(It.IsAny<DateTime>()))
                         .Returns((DateTime dt) => new InterestRule { Date = dt, RuleId = "RULE01", RatePercent = 1.0m });
 
-            var result = bankService.GetStatement("A1 202411");
+            var request = new StatementRequestDto { AccountId = "A1", Year = 2024, Month = 11 };
+            var result = bankService.GetStatement(request);
             Assert.NotEmpty(result);
             Assert.Equal(TransactionType.Interest, result.Last().Type);
         }
